@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Shopping Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        #items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: 150px;
+            text-align: center;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+
+        .item:hover {
+            background-color: #e0e0e0;
+        }
+
+        .item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        #cart, #suggestion {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+
+        button {
+            margin: 10px 5px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #reset-button {
+            background-color: #dc3545;
+        }
+
+        #reset-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Budget Shopping Assistant</h1>
+        <p><strong>Fixed Budget:</strong> ₹2000</p>
+
+        <h2>Items</h2>
+        <div id="items">
+            <!-- Items will be dynamically added here -->
+        </div>
+
+        <h2>Cart</h2>
+        <div id="cart">
+            <p>No items added yet.</p>
+        </div>
+
+        <button id="suggest-button">Suggest Optimal Items</button>
+        <button id="reset-button">Reset</button>
+
+        <h2>Optimal Suggestion</h2>
+        <div id="suggestion">
+            <p>No suggestion yet.</p>
+        </div>
+    </div>
+
+    <script>
+        // Fixed budget
+        const BUDGET = 2000;
+
+        // Predefined items with name, price, value, and image URL
+        const PREDEFINED_ITEMS = [
+            { name: "Water", price: 300, value: 5, image: "https://images.pexels.com/photos/416528/pexels-photo-416528.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1" },
+            { name: "Bread", price: 400, value: 7, image: "https://images.pexels.com/photos/1775043/pexels-photo-1775043.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1" },
+            { name: "Eggs", price: 500, value: 9, image: "https://images.pexels.com/photos/162712/egg-white-food-protein-162712.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1" },
+            { name: "Cheese", price: 600, value: 10, image: "https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1" },
+            { name: "Oil", price: 700, value: 8, image: "https://images.pexels.com/photos/5946775/pexels-photo-5946775.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&dpr=1" },
+        ];
+
+        let cart = [];
+
+        // Display predefined items
+        function displayItems() {
+            const itemsContainer = document.getElementById("items");
+            itemsContainer.innerHTML = PREDEFINED_ITEMS.map(item => `
+                <div class="item" data-name="${item.name}" data-price="${item.price}" data-value="${item.value}">
+                    <img src="${item.image}" alt="${item.name}">
+                    <strong>${item.name}</strong><br>
+                    ₹${item.price.toFixed(2)}<br>
+                    Value: ${item.value}
+                </div>
+            `).join("");
+
+            // Add event listeners to items
+            document.querySelectorAll(".item").forEach(item => {
+                item.addEventListener("click", () => addToCart(item));
+            });
+        }
+
+        // Add item to cart
+        function addToCart(item) {
+            const name = item.getAttribute("data-name");
+            const price = parseFloat(item.getAttribute("data-price"));
+            const value = parseInt(item.getAttribute("data-value"));
+
+            // Check if the item is already in the cart
+            if (cart.some(cartItem => cartItem.name === name)) {
+                alert(`${name} is already in the cart!`);
+                return;
+            }
+
+            // Check if adding the item exceeds the budget
+            const totalSpent = cart.reduce((sum, item) => sum + item.price, 0);
+            if (totalSpent + price > BUDGET) {
+                alert(`Adding ${name} will exceed your budget!`);
+                return;
+            }
+
+            // Add item to cart
+            cart.push({ name, price, value });
+            updateCartDisplay();
+        }
+
+        // Update cart display
+        function updateCartDisplay() {
+            const cartContainer = document.getElementById("cart");
+            if (cart.length === 0) {
+                cartContainer.innerHTML = "<p>No items added yet.</p>";
+            } else {
+                cartContainer.innerHTML = `
+                    <p><strong>Items in Cart:</strong></p>
+                    <ul>
+                        ${cart.map(item => `
+                            <li>${item.name} - ₹${item.price.toFixed(2)} (Value: ${item.value})</li>
+                        `).join("")}
+                    </ul>
+                    <p><strong>Total Spent:</strong> ₹${cart.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</p>
+                `;
+            }
+        }
+
+        // Knapsack algorithm to suggest optimal items
+        function knapsack(budget, items) {
+            const n = items.length;
+            const dp = Array.from({ length: n + 1 }, () => Array(budget + 1).fill(0));
+
+            for (let i = 1; i <= n; i++) {
+                const { price, value } = items[i - 1];
+                for (let w = 0; w <= budget; w++) {
+                    if (price <= w) {
+                        dp[i][w] = Math.max(dp[i - 1][w], dp[i - 1][w - price] + value);
+                    } else {
+                        dp[i][w] = dp[i - 1][w];
+                    }
+                }
+            }
+
+            // Backtrack to find selected items
+            const selectedItems = [];
+            let w = budget;
+            for (let i = n; i > 0; i--) {
+                if (dp[i][w] !== dp[i - 1][w]) {
+                    selectedItems.push(items[i - 1]);
+                    w -= items[i - 1].price;
+                }
+            }
+
+            return { maxValue: dp[n][budget], selectedItems };
+        }
+
+        // Suggest optimal items
+        function suggestOptimalItems() {
+            const { maxValue, selectedItems } = knapsack(BUDGET, PREDEFINED_ITEMS);
+            const suggestionContainer = document.getElementById("suggestion");
+            suggestionContainer.innerHTML = `
+                <p><strong>Optimal Items to Select:</strong></p>
+                <ul>
+                    ${selectedItems.map(item => `
+                        <li>${item.name} - ₹${item.price.toFixed(2)} (Value: ${item.value})</li>
+                    `).join("")}
+                </ul>
+                <p><strong>Total Cost:</strong> ₹${selectedItems.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</p>
+                <p><strong>Max Value:</strong> ${maxValue}</p>
+            `;
+        }
+
+        // Reset cart and suggestion
+        function reset() {
+            cart = [];
+            updateCartDisplay();
+            document.getElementById("suggestion").innerHTML = "<p>No suggestion yet.</p>";
+        }
+
+        // Event listeners
+        document.getElementById("suggest-button").addEventListener("click", suggestOptimalItems);
+        document.getElementById("reset-button").addEventListener("click", reset);
+
+        // Initialize
+        displayItems();
+    </script>
+</body>
+</html>
